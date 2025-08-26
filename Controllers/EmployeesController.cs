@@ -120,7 +120,57 @@ namespace EmployeeApi.Controllers
             return CreatedAtAction(nameof(GetEmployeeById), new { id = employee.Empid }, employee);
         }
 
+        [HttpPut("{id:int}")]
+        public async Task<IActionResult> Update(int id, Employee employee)
+        {
+            if (id != employee.Empid)
+                return BadRequest("Empid mismatch.");
 
+            var connectionString = _config.GetConnectionString("DefaultConnection");
+
+            using (SqlConnection conn = new SqlConnection(connectionString))
+            {
+                await conn.OpenAsync();
+
+                using (SqlCommand cmd = new SqlCommand("updateEmployee", conn))
+                {
+                    cmd.CommandType = CommandType.StoredProcedure;
+
+                    cmd.Parameters.AddWithValue("@Empid", employee.Empid);
+                    cmd.Parameters.AddWithValue("@Ename", employee.Ename);
+                    cmd.Parameters.AddWithValue("@DeptID", employee.Dept_ID);
+
+                    await cmd.ExecuteNonQueryAsync();
+                }
+            }
+
+            return NoContent(); // 204 is standard for PUT
+        }
+
+
+        [HttpDelete("{id:int}")]
+        public async Task<IActionResult> Delete(int id)
+        {
+            var connectionString = _config.GetConnectionString("DefaultConnection");
+
+            using (SqlConnection conn = new SqlConnection(connectionString))
+            {
+                await conn.OpenAsync();
+
+                using (SqlCommand cmd = new SqlCommand("deleteEmployee", conn))
+                {
+                    cmd.CommandType = CommandType.StoredProcedure;
+                    cmd.Parameters.AddWithValue("@Empid", id);
+
+                    int rowsAffected = await cmd.ExecuteNonQueryAsync();
+
+                    if (rowsAffected == 0)
+                        return NotFound(); // No employee with this id
+                }
+            }
+
+            return NoContent(); // 204 is standard for DELETE
+        }
 
 
 
