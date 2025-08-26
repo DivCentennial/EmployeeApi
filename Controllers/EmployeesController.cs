@@ -59,40 +59,69 @@ namespace EmployeeApi.Controllers
 
 
         // GET: api/Employees/{id}
-[HttpGet("{id:int}")]
-public async Task<ActionResult<Employee>> GetEmployeeById(int id)
-{
-    var connectionString = _config.GetConnectionString("DefaultConnection");
-
-    using (SqlConnection conn = new SqlConnection(connectionString))
-    {
-        await conn.OpenAsync();
-
-        using (SqlCommand cmd = new SqlCommand("getEmpById", conn))
+        [HttpGet("{id:int}")]
+        public async Task<ActionResult<Employee>> GetEmployeeById(int id)
         {
-            cmd.CommandType = CommandType.StoredProcedure;
-            cmd.Parameters.AddWithValue("@EmpID", id);
+            var connectionString = _config.GetConnectionString("DefaultConnection");
 
-            using (SqlDataReader reader = await cmd.ExecuteReaderAsync())
+            using (SqlConnection conn = new SqlConnection(connectionString))
             {
-                if (await reader.ReadAsync())
+                await conn.OpenAsync();
+
+                using (SqlCommand cmd = new SqlCommand("getEmpById", conn))
                 {
-                    var employee = new Employee
+                    cmd.CommandType = CommandType.StoredProcedure;
+                    cmd.Parameters.AddWithValue("@EmpID", id);
+
+                    using (SqlDataReader reader = await cmd.ExecuteReaderAsync())
                     {
-                        Empid = reader.GetInt32(reader.GetOrdinal("Empid")),
-                        Ename = reader.GetString(reader.GetOrdinal("Emp_name")),
-                        Dept_ID = reader.GetInt32(reader.GetOrdinal("DeptID"))
-                    };
-                    return Ok(employee);
-                }
-                else
-                {
-                    return NotFound(); // ID not found
+                        if (await reader.ReadAsync())
+                        {
+                            var employee = new Employee
+                            {
+                                Empid = reader.GetInt32(reader.GetOrdinal("Empid")),
+                                Ename = reader.GetString(reader.GetOrdinal("Emp_name")),
+                                Dept_ID = reader.GetInt32(reader.GetOrdinal("DeptID"))
+                            };
+                            return Ok(employee);
+                        }
+                        else
+                        {
+                            return NotFound(); // ID not found
+                        }
+                    }
                 }
             }
         }
-    }
-}
+
+
+        [HttpPost]
+        public async Task<IActionResult> Create(Employee employee)
+        {
+            var connectionString = _config.GetConnectionString("DefaultConnection");
+
+            using (SqlConnection conn = new SqlConnection(connectionString))
+            {
+                await conn.OpenAsync();
+
+                using (SqlCommand cmd = new SqlCommand("insertEmployee", conn))
+                {
+                    cmd.CommandType = CommandType.StoredProcedure;
+
+                    // supply all three fields
+                    cmd.Parameters.AddWithValue("@Empid", employee.Empid);
+                    cmd.Parameters.AddWithValue("@Ename", employee.Ename);
+                    cmd.Parameters.AddWithValue("@DeptID", employee.Dept_ID);
+
+                    await cmd.ExecuteNonQueryAsync();
+                }
+            }
+
+            return CreatedAtAction(nameof(GetEmployeeById), new { id = employee.Empid }, employee);
+        }
+
+
+
 
 
     }
