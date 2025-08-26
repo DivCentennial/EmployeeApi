@@ -1,5 +1,4 @@
-﻿using Microsoft.AspNetCore.Http;
-using Microsoft.AspNetCore.Mvc;
+﻿using Microsoft.AspNetCore.Mvc;
 using System.Data;
 using System.Data.SqlClient;
 using EmployeeApi.Models;
@@ -8,7 +7,7 @@ namespace EmployeeApi.Controllers
 {
     [ApiController]
     [Route("api/[controller]")]
-    [Produces("application/json")] // Swagger shows JSON
+    [Produces("application/json")]
     public class EmployeesController : ControllerBase
     {
         private readonly IConfiguration _config;
@@ -18,35 +17,83 @@ namespace EmployeeApi.Controllers
             _config = config;
         }
 
-        // GET: api/Employees
         [HttpGet]
         public async Task<ActionResult<IEnumerable<Employee>>> GetAllEmployees()
         {
             var employees = new List<Employee>();
+            var connectionString = _config.GetConnectionString("DefaultConnection");
 
-            using (SqlConnection conn = new SqlConnection(_config.GetConnectionString("DefaultConnection")))
-            using (SqlCommand cmd = new SqlCommand("getEmp", conn))
+            using (SqlConnection conn = new SqlConnection(connectionString))
             {
-                cmd.CommandType = CommandType.StoredProcedure;
                 await conn.OpenAsync();
 
-                using (SqlDataReader reader = await cmd.ExecuteReaderAsync())
+                /*// ✅ Debug: Check connected DB
+                using (SqlCommand checkCmd = new SqlCommand("SELECT DB_NAME()", conn))
                 {
-                    while (await reader.ReadAsync())
+                    var dbName = (await checkCmd.ExecuteScalarAsync())?.ToString();
+                    Console.WriteLine($"[DEBUG] Connected to DB: {dbName}");
+                }*/  //WITHOUT THIS IS ALSO WORKING, JUST MAKE IT SIMPLE
+
+                // ✅ Call stored procedure
+                using (SqlCommand cmd = new SqlCommand("getEmp", conn))
+                {
+                    cmd.CommandType = CommandType.StoredProcedure;
+
+                    using (SqlDataReader reader = await cmd.ExecuteReaderAsync())
                     {
-                        employees.Add(new Employee
+                        while (await reader.ReadAsync())
                         {
-                            EmpNo = reader.GetInt32(reader.GetOrdinal("EmpNo")),
-                            Employee_Name = reader.GetString(reader.GetOrdinal("Employee_Name")),
-                            //Salary = reader.GetInt32(reader.GetOrdinal("Salary")),
-                            Department_ID = reader.GetInt32(reader.GetOrdinal("Department_ID"))
-                        });
+                            employees.Add(new Employee
+                            {
+                                Empid = reader.GetInt32(reader.GetOrdinal("Empid")),
+                                Ename = reader.GetString(reader.GetOrdinal("Ename")),
+                                Dept_ID = reader.GetInt32(reader.GetOrdinal("DeptID"))
+                            });
+                        }
                     }
                 }
             }
 
             return Ok(employees);
         }
-    }
 
+
+        // GET: api/Employees/{id}
+[HttpGet("{id:int}")]
+public async Task<ActionResult<Employee>> GetEmployeeById(int id)
+{
+    var connectionString = _config.GetConnectionString("DefaultConnection");
+
+    using (SqlConnection conn = new SqlConnection(connectionString))
+    {
+        await conn.OpenAsync();
+
+        using (SqlCommand cmd = new SqlCommand("getEmpById", conn))
+        {
+            cmd.CommandType = CommandType.StoredProcedure;
+            cmd.Parameters.AddWithValue("@EmpID", id);
+
+            using (SqlDataReader reader = await cmd.ExecuteReaderAsync())
+            {
+                if (await reader.ReadAsync())
+                {
+                    var employee = new Employee
+                    {
+                        Empid = reader.GetInt32(reader.GetOrdinal("Empid")),
+                        Ename = reader.GetString(reader.GetOrdinal("Emp_name")),
+                        Dept_ID = reader.GetInt32(reader.GetOrdinal("DeptID"))
+                    };
+                    return Ok(employee);
+                }
+                else
+                {
+                    return NotFound(); // ID not found
+                }
+            }
+        }
+    }
+}
+
+
+    }
 }

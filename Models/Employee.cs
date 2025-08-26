@@ -2,8 +2,8 @@
 {
     public class Employee
     {
-        public int EmpNo { get; set; }
-        public string Employee_Name { get; set; }
-        public int Department_ID { get; set; }
+        public int Empid { get; set; }
+        public string Ename { get; set; }
+        public int Dept_ID { get; set; }
     }
 }
