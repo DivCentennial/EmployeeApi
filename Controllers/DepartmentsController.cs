@@ -1,7 +1,6 @@
 ﻿using Microsoft.AspNetCore.Mvc;
-using System.Data;
-using System.Data.SqlClient;
 using EmployeeApi.Models;
+using EmployeeApi.Data;
 
 namespace EmployeeApi.Controllers
 {
@@ -9,32 +8,18 @@ namespace EmployeeApi.Controllers
     [ApiController]
     public class DepartmentsController : ControllerBase
     {
-        private readonly IConfiguration _config;
+        private readonly DepartmentRepository _repository;
 
         public DepartmentsController(IConfiguration config)
         {
-            _config = config;
+            var connectionString = config.GetConnectionString("DefaultConnection");
+            _repository = new DepartmentRepository(connectionString);
         }
 
         [HttpPost]
         public async Task<IActionResult> Create(Department department)
         {
-            var connectionString = _config.GetConnectionString("DefaultConnection");
-
-            using (SqlConnection conn = new SqlConnection(connectionString))
-            {
-                await conn.OpenAsync();
-
-                using (SqlCommand cmd = new SqlCommand("insertDepartment", conn))
-                {
-                    cmd.CommandType = CommandType.StoredProcedure;
-                    cmd.Parameters.AddWithValue("@Department_ID", department.Department_ID);
-                    cmd.Parameters.AddWithValue("@Department_Name", department.Department_Name);
-
-                    await cmd.ExecuteNonQueryAsync();
-                }
-            }
-
+            await _repository.CreateAsync(department);
             return CreatedAtAction(nameof(GetById), new { id = department.Department_ID }, department);
         }
 
@@ -44,76 +29,22 @@ namespace EmployeeApi.Controllers
             if (id != department.Department_ID)
                 return BadRequest("Department_ID mismatch.");
 
-            var connectionString = _config.GetConnectionString("DefaultConnection");
-
-            using (SqlConnection conn = new SqlConnection(connectionString))
-            {
-                await conn.OpenAsync();
-
-                using (SqlCommand cmd = new SqlCommand("updateDepartment", conn))
-                {
-                    cmd.CommandType = CommandType.StoredProcedure;
-                    cmd.Parameters.AddWithValue("@Department_ID", department.Department_ID);
-                    cmd.Parameters.AddWithValue("@Department_Name", department.Department_Name);
-
-                    await cmd.ExecuteNonQueryAsync();
-                }
-            }
-
+            await _repository.UpdateAsync(department);
             return NoContent();
         }
 
         [HttpDelete("{id:int}")]
         public async Task<IActionResult> Delete(int id)
         {
-            var connectionString = _config.GetConnectionString("DefaultConnection");
-
-            using (SqlConnection conn = new SqlConnection(connectionString))
-            {
-                await conn.OpenAsync();
-
-                using (SqlCommand cmd = new SqlCommand("deleteDepartment", conn))
-                {
-                    cmd.CommandType = CommandType.StoredProcedure;
-                    cmd.Parameters.AddWithValue("@Department_ID", id);
-
-                    await cmd.ExecuteNonQueryAsync();
-                }
-            }
-
+            await _repository.DeleteAsync(id);
             return NoContent();
         }
 
         [HttpGet("{id:int}")]
         public async Task<IActionResult> GetById(int id)
         {
-            Department department = null;
-            var connectionString = _config.GetConnectionString("DefaultConnection");
-
-            using (SqlConnection conn = new SqlConnection(connectionString))
-            {
-                await conn.OpenAsync();
-
-                using (SqlCommand cmd = new SqlCommand("SELECT Department_ID, Department_Name FROM Department_Details WHERE Department_ID=@id", conn))
-                {
-                    cmd.Parameters.AddWithValue("@id", id);
-
-                    using (var reader = await cmd.ExecuteReaderAsync())
-                    {
-                        if (await reader.ReadAsync())
-                        {
-                            department = new Department
-                            {
-                                Department_ID = reader.GetInt32(0),
-                                Department_Name = reader.GetString(1)
-                            };
-                        }
-                    }
-                }
-            }
-
+            var department = await _repository.GetByIdAsync(id);
             if (department == null) return NotFound();
-
             return Ok(department);
         }
     }
