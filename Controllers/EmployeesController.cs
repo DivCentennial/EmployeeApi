@@ -27,14 +27,14 @@ namespace EmployeeApi.Controllers
             {
                 await conn.OpenAsync();
 
-                /*// ✅ Debug: Check connected DB
+                /*//  Debug: Check connected DB
                 using (SqlCommand checkCmd = new SqlCommand("SELECT DB_NAME()", conn))
                 {
                     var dbName = (await checkCmd.ExecuteScalarAsync())?.ToString();
                     Console.WriteLine($"[DEBUG] Connected to DB: {dbName}");
-                }*/  //WITHOUT THIS IS ALSO WORKING, JUST MAKE IT SIMPLE
+                }*/          //WITHOUT THIS IS ALSO WORKING, JUST MAKE IT SIMPLE
 
-                // ✅ Call stored procedure
+                //  Call stored procedure
                 using (SqlCommand cmd = new SqlCommand("getEmp", conn))
                 {
                     cmd.CommandType = CommandType.StoredProcedure;
